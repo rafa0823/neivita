@@ -1,0 +1,176 @@
+---
+title: <center>Tarea 3</center>
+jupyter: python3
+---
+
+Instrucciones:
+1. Ponle de nombre a tu tarea `tarea_3.ipynb` un Jupyter Notebook (5 points)
+2. Escribe tu nombre comleto y tus iniciales en tu notebook después de la siguiente nota:
+*Este trabajo es mio y sigue la integridad académica del Tec. de Monterrey*
+3. Agrega los nombres de todos los compañeros con los que trabajaste. Recuerda que puedes discutir con tus compañeros pero cada quien tiene que entregar su tarea.
+4. **ADVERTENCIA!** solo puedes utilizar las librerias que explicitamente se mencionen. El uso de cualquier otra libreria para resolver algún ejercicio será tomado como plagio :(
+5. Librerias: `pandas` y `numpy`
+6. Para está tarea usaras distintos datasets, todos estan en Gitlab en la carpeta `data/tidy`
+7. Descarga tu .ipybn y subelo a canvas!
+
+```{python}
+import pandas as pd
+import numpy as np
+```    
+
+## Tidy
+1. La base `billboard` tiene las 100 canciones en Billboard del año 2000.
+    1. ¿Es tidy esta base?
+    2. Si no es tidy, identifica el problema y resuelvelo
+    3. Ten cuidado con los missing values. Los necesitamos en la base final?
+
+```{python}
+bd = pd.read_csv("tidy/billboard.csv")
+bd.info()
+bd.head()
+bd.shape
+bd.isnull().sum()
+```
+
+```{python}
+bd = bd.dropna(axis=1, how='all')
+bd.isnull().sum()
+bd = bd.drop(bd.columns[0:2], axis=1)
+```
+
+La base no es tidy porque tiene múltiples columnas de semanas, cuando éstas deberías ser una sola columna y tener otra columna con los valores del ranking
+
+```{python}
+id_vars = [
+    'year', 'artist.inverted', 'track', 'time', 'genre', 'date.entered', 'date.peaked'
+]
+# Melt the DataFrame to gather all week columns into rows
+bd = pd.melt(bd, id_vars=id_vars, var_name='week', value_name='rank')
+bd['week'] = bd['week'].str.extract('(\d+)').astype("category")
+
+# Sort by song and week number for readability
+bd = bd.sort_values(by=id_vars + ['week']).reset_index(drop=True)
+```
+
+2. La base `fish_encounters` tiene información del monitoreo de peces que nadan en un rio
+    1. ¿Es tidy esta base?
+    2. Si no es tidy, identifica el problema y resuelvelo
+    3. ¿Hay missing values? ¿Qué quieren decir los missings en está base?
+
+```{python}
+bd = pd.read_csv("tidy/fish_encounters.csv")
+bd = bd.drop(bd.columns[0:2], axis=1) 
+bd.isnull().sum()
+```
+Esta base de datos sigue los principios de una base tidy y no tiene valores nulos.
+
+3. La base `us_rent_income` muestra el ingreso en 2017 en Estados Unidos por Estado. Los datos vienen de la American Communiy Survet.
+    1. ¿Es tidy esta base?
+    2. Si no es tidy, identifica el problema y resuelvelo
+    3. ¿Por qué esta base es distinta a las dos anteriores?
+
+```{python}
+bd = pd.read_csv("tidy/us_rent_income.csv")
+bd = bd.drop(bd.columns[0:2], axis=1) 
+bd.isnull().sum()
+bd = bd.pivot(index=["GEOID", "NAME"], columns="variable", values=["estimate", "moe"])
+bd.columns = ['_'.join(col).strip() for col in bd.columns.values]
+bd = bd.reset_index()
+bd.head()
+```
+
+4. Usando la base de `soccer` definida acá abajo contesta lo siguiente
+    1. ¿Qué errores encuentras en este base?
+    2. ¿Qué pasa si aplicas `pivot_table` sin resolver el error? ¿Qué mide cada renglón?
+    3. Arregla la base y transformala para que nos muestre en los renglones el partido, en las columnas el jugador y en las celdas el total de goles por partido  
+
+```{python}
+data = {
+    'player': ['Messi', 'Messi', 'Messi', 'Messi', 'Griezmann', 'Griezmann'],
+    'game': ['Real Sociedad', 'Huesca', 'Real Sociedad', 'Huesca', 'Real Sociedad', 'Huesca'],
+    'goals': [2, 2, 0, 1, 1, 1]
+}
+soccer = pd.DataFrame(data)
+```
+
+```{python}
+soccer = soccer.pivot_table(index="game", values="goals", columns="player", aggfunc="sum").reset_index()
+```
+5. Vuelve la base `preg` tidy. ¿Cuáles son las variables?  
+```{python}
+data2 = {
+    'pregnant': ['yes','no'],
+    'male': [np.NaN,20],
+    'female': [10,12]
+}
+preg = pd.DataFrame(data2)
+```
+
+## Tidying case study: paso a paso  
+
+Para este ejercicio vamos a usar la base de datos `who`. Carga el dataframe y contesta lo siguiente:
+1. ¿Hay missing values implicitos en estos datos? ¿Cuántos implicit missing values hay? ¿Por qué faltan estos valores? Si no hay muestra como puedes comprobar que no hay
+2. ¿Cuántos pares country-year faltan explicitamente en la base?
+3. ¿Cuál es la diferencia entre un `NA` y un cero?
+4. Junta todas las variables entre `new_sp_m014` y `newrel_f65` en una sola columna llamada `key` y los valores a una columna llamada `casos`
+5. Tira los missings de la base anterior
+6. ¿Cuántos valores unicos hay en `key`?
+7. La variable `key` tiene la siguiente estrctura:
+   * Las primeras 3 letras nos dicen si son nuevos `new` o viejos `old` casos de TB. En esta base todos son `new`
+   * Las siguientes dos letras describen el tipo de tuberculosis: `rel`(recaida), `ep` (extra pulmonaria), `sn` (pulmonaria con frotis pulmonar negativo), `sp` (pulmonaria con frotis pulmonar positivo)
+   * La siguiente letra nos da el sexo del paciente `m` hombres y `f` mujeres
+   * Los últimos números nos dan el grupo de edad:
+       * 014 = 0 – 14 years old
+       * 1524 = 15 – 24 years old
+       * 2534 = 25 – 34 years old
+       * 3544 = 35 – 44 years old
+       * 4554 = 45 – 54 years old
+       * 5564 = 55 – 64 years old
+       * 65 = 65 or older
+   * Los nombres son inconsistetes algunos son `newrel` y otros `new_rel`
+   
+   1. Utiliza toda esta información para crear las siguientes variables:
+        1. Variable que nos diga el tipo de tuberculosis `rel`, `ep`, `sn`,`sp`
+        2. Variable que nos diga el sexo
+        3. Variable que nos diga el grupo de edad
+8. Tira las variables que sean redundates de la base
+9. Comprueba que tus datos ya sean tidy después de todo esto
+10. Para cada país, año y sexo calcula la cantidad de casos de tuberculosis
+
+```{python}
+bd = pd.read_csv("tidy/who.csv")
+bd = bd.drop(bd.columns[0:2], axis=1)
+
+bd.isnull().sum()/bd.shape[0] # Hay muchos valores nulos, algunos cerca del 100%
+
+bd["year"].unique()
+
+conteo = bd[["country", "year"]].groupby("country")["year"].nunique().reset_index()
+conteo[conteo["year"] != 34].shape # De los 2019 países que hay, 9 no tienen 34 años de observaciones
+
+# Un NA es un valor que no existe en la base, es una manera de indicar que no se cuenta con dicha información, mientras que un cero puede ser el resultado de la medición
+
+id_vars = ["country", "iso2", "iso3", "year"]
+
+bd = pd.melt(bd, id_vars=id_vars, var_name='key', value_name='casos').dropna()
+
+bd["key"] = bd["key"].str.replace(r'new(?!_)', 'new_', regex=True)
+bd[['basura', 'enfermedad', 'sexo_edad']] = bd['key'].str.split('_', expand=True, n=2)
+bd['sexo'] = bd['sexo_edad'].str.extract('([a-zA-Z])')[0]
+bd['edad'] = bd['sexo_edad'].str.extract('(\d+)')[0]
+
+# Dropping unnecessary columns: 'basura' and 'sexo_edad'
+bd.drop(columns=['basura', 'sexo_edad', "key"], inplace=True)
+
+bd.head()
+
+bd.groupby(["iso3", "year", "sexo"])["casos"].sum().reset_index()
+
+```
+
+## Unseen untidy data
+1. La base de datos `world_bank_pop` no es tidy. Hazla tidy, muestra cada uno de los pasos y escirbe un par de oraciones que describan que hiciste. Tu base final se tiene que ver más o menos asi:
+
+![alternative text](images/base_pop.png)
+
+
