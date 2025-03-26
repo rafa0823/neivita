@@ -1,0 +1,55 @@
+
+---
+title: "Technology and Missing persons relationship: An Analysis of Mexican Data"
+author: "Neivita, la más chiquita, la más bonita"
+date: "2025-03-25"
+format:
+  html:
+    theme: cosmo
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    code-fold: true
+    code-tools: true
+    highlight-style: github
+---
+
+```{python}
+#| label: Cargar paqueterías
+import pandas as pd
+import numpy as np
+```
+
+```{python}
+#| label: leer archivo rnpndo
+
+bd = pd.read_csv("rnpndo.csv")
+print(bd.columns)
+bd.dropna(subset = "cod_inegi", inplace=True)
+
+bd["cod_inegi"] = bd["cod_inegi"].astype(int).astype(str)
+bd["ano"]=bd["ano"].astype(int).astype(str)
+
+desaparecidos = bd.groupby(["ano", "cod_inegi"])["reportes"].sum().reset_index()
+desaparecidos.head()
+```
+
+
+```{python}
+#| label: leer relación inegi
+inegi = pd.read_csv("relacion_inegi.csv")
+inegi["cod_inegi"] = inegi["CVEGEO"].astype(str)
+
+inegi = inegi[["cod_inegi", "NOM_ENT", "NOM_MUN", "POB_TOTAL"]]
+
+bd_final = pd.merge( 
+  left = inegi, 
+  right=desaparecidos,
+  on="cod_inegi", 
+  how="left"
+)
+
+bd_final.head()
+
+```
+
